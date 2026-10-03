@@ -3,20 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Max Chill Garden membership management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: members
+    description: Member records and visits
+  - name: dashboard
+    description: Membership reporting
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +27,149 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /members:
+    get:
+      operationId: listMembers
+      tags: [members]
+      summary: Search or list members
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Members matching the search
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Member"
+    post:
+      operationId: createMember
+      tags: [members]
+      summary: Register a member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberInput"
+      responses:
+        "201":
+          description: Member created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "409":
+          description: A member already uses this phone number
+  /members/{memberId}:
+    get:
+      operationId: getMember
+      tags: [members]
+      summary: Get a member and visit history
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Member profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberDetail"
+        "404":
+          description: Member not found
+    patch:
+      operationId: updateMember
+      tags: [members]
+      summary: Update a member profile
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberUpdate"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "404":
+          description: Member not found
+        "409":
+          description: A member already uses this phone number
+  /members/{memberId}/visits:
+    post:
+      operationId: createVisit
+      tags: [members]
+      summary: Record a member visit
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisitInput"
+      responses:
+        "201":
+          description: Visit recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Visit"
+        "404":
+          description: Member not found
+    get:
+      operationId: listMemberVisits
+      tags: [members]
+      summary: List member visits
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Member visits, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Visit"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Membership overview and top members
+      responses:
+        "200":
+          description: Membership metrics and leaderboards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +179,113 @@ components:
           type: string
       required:
         - status
-
+    Member:
+      type: object
+      required:
+        - id
+        - fullName
+        - phone
+        - joinedAt
+        - birthday
+        - notes
+        - visitCount
+        - lastVisitAt
+        - averagePartySize
+        - totalSpend
+        - tier
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        phone: { type: string }
+        joinedAt: { type: string, format: date-time }
+        birthday: { type: ["string", "null"], format: date }
+        notes: { type: ["string", "null"] }
+        visitCount: { type: integer }
+        lastVisitAt: { type: ["string", "null"], format: date-time }
+        averagePartySize: { type: ["number", "null"] }
+        totalSpend: { type: integer }
+        tier: { type: string, enum: [Member, Silver, Gold] }
+    MemberDetail:
+      allOf:
+        - $ref: "#/components/schemas/Member"
+        - type: object
+          required: [visits]
+          properties:
+            visits:
+              type: array
+              items:
+                $ref: "#/components/schemas/Visit"
+    MemberInput:
+      type: object
+      required: [fullName, phone, joinedAt]
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 120 }
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        joinedAt: { type: string, format: date-time }
+        birthday: { type: ["string", "null"], format: date }
+        notes: { type: ["string", "null"], maxLength: 2000 }
+    MemberUpdate:
+      type: object
+      required: [fullName, phone, birthday, notes]
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 120 }
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        birthday: { type: ["string", "null"], format: date }
+        notes: { type: ["string", "null"], maxLength: 2000 }
+    Visit:
+      type: object
+      required: [id, memberId, arrivedAt, partySize, billAmount, note]
+      properties:
+        id: { type: integer }
+        memberId: { type: integer }
+        arrivedAt: { type: string, format: date-time }
+        partySize: { type: integer }
+        billAmount: { type: integer }
+        note: { type: ["string", "null"], maxLength: 2000 }
+    VisitInput:
+      type: object
+      required: [arrivedAt, partySize, billAmount]
+      properties:
+        arrivedAt: { type: string, format: date-time }
+        partySize: { type: integer, minimum: 1, maximum: 50 }
+        billAmount: { type: integer, minimum: 0 }
+        note: { type: ["string", "null"], maxLength: 2000 }
+    MemberLeader:
+      type: object
+      required: [id, fullName, phone, visitCount, totalSpend, tier]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        phone: { type: string }
+        visitCount: { type: integer }
+        totalSpend: { type: integer }
+        tier: { type: string, enum: [Member, Silver, Gold] }
+    Dashboard:
+      type: object
+      required:
+        - totalMembers
+        - newMembers
+        - returningMembers
+        - silverMembers
+        - goldMembers
+        - pilotCapacity
+        - topByVisits
+        - topBySpend
+      properties:
+        totalMembers: { type: integer }
+        newMembers: { type: integer }
+        returningMembers: { type: integer }
+        silverMembers: { type: integer }
+        goldMembers: { type: integer }
+        pilotCapacity:
+          type: object
+          required: [limit, remaining]
+          properties:
+            limit: { type: integer }
+            remaining: { type: integer }
+        topByVisits:
+          type: array
+          items: { $ref: "#/components/schemas/MemberLeader" }
+        topBySpend:
+          type: array
+          items: { $ref: "#/components/schemas/MemberLeader" }

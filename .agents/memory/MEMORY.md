@@ -1,0 +1,1 @@
+- [Max Chill pilot](max-chill-pilot.md) — the first rollout targets 100 guests; proposed membership conditions and benefits still need the owner's approval.

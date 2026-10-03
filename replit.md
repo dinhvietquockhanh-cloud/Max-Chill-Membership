@@ -1,6 +1,6 @@
-# [Project name]
+# Max Chill Membership
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A staff-facing membership register for Max Chill Garden: find guests by phone, maintain profiles and visit history, and review member activity.
 
 ## Run & Operate
 
@@ -22,23 +22,34 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/max-chill-membership` — staff web app
+- `artifacts/api-server/src/routes` — membership and dashboard endpoints
+- `lib/api-spec/openapi.yaml` — API contract; regenerate clients with the command above
+- `lib/db/src/schema/membership.ts` — member and visit tables
+- `artifacts/max-chill-membership/src/index.css` — app theme
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Visit records are the source of truth for visit counts, spend, average party size, and tier; aggregates are recalculated from visits.
+- Tier thresholds and benefits are a draft for the 100-member pilot and remain subject to the owner's approval. Benefits are not automatically granted.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Staff can register members, look up profiles by phone, record visits, and view visit history and lifetime spend.
+- The overview reports new and returning members, Silver/Gold counts, pilot capacity, and top members by visits and spend.
+
+## Access and pilot safety
+
+- Staff sign-in and access restrictions are not implemented yet. Do not enter real guest contact data or publish this app until staff-only access is added.
+- Silver and Gold profile labels preview the proposed thresholds; no proposed benefit is granted automatically.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Keep staff workflows simple and usable on phones, tablets, and desktop computers.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The API is served under `/api`; frontend calls must use the generated API client.
 
 ## Pointers
 

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Max Chill Membership"
+description = "A simple member management app for Max Chill Garden staff to register members, look up guest visit history by phone number, record visits and spend, and review membership activity."
+version = "1.0.0"
+id = "artifacts/max-chill-membership"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24089
+
+[services.development]
+run = "pnpm --filter @workspace/max-chill-membership run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/max-chill-membership", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/max-chill-membership/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24089"
+BASE_PATH = "/"
