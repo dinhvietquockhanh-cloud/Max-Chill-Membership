@@ -64,6 +64,23 @@ function dateLabel(value?: string | null, options: Intl.DateTimeFormatOptions = 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : new Intl.DateTimeFormat('vi-VN', options).format(date);
 }
+function birthdayInputValue(value?: string | null) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value?.slice(0, 10) ?? '');
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : '';
+}
+function birthdayStorageValue(value: string) {
+  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+  if (!match) return null;
+  const [, dayText, monthText, yearText] = match;
+  const day = Number(dayText);
+  const month = Number(monthText);
+  const year = Number(yearText);
+  const checkDate = new Date(0);
+  checkDate.setFullYear(year, month - 1, day);
+  checkDate.setHours(0, 0, 0, 0);
+  if (checkDate.getFullYear() !== year || checkDate.getMonth() !== month - 1 || checkDate.getDate() !== day) return null;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(-2).map(part => part[0]?.toUpperCase()).join('') || 'M';
 }
@@ -178,7 +195,17 @@ function VisitEntry({ memberId, onDone, onCancel, compact = false }: { memberId:
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
-    mutation.mutate({ memberId, data: { arrivedAt: new Date().toISOString(), partySize: Number(partySize), billAmount: Number(billAmount || 0), note: note.trim() || null } }, {
+    const partySizeValue = Number(partySize);
+    const billAmountValue = Number(billAmount || 0);
+    if (!Number.isInteger(partySizeValue) || partySizeValue < 1 || partySizeValue > 50) {
+      setError('Số khách phải từ 1 đến 50.');
+      return;
+    }
+    if (!Number.isFinite(billAmountValue) || billAmountValue < 0 || billAmountValue % 1000 !== 0) {
+      setError('Hóa đơn phải là số không âm, theo bội số 1.000 đồng.');
+      return;
+    }
+    mutation.mutate({ memberId, data: { arrivedAt: new Date().toISOString(), partySize: partySizeValue, billAmount: billAmountValue, note: note.trim() || null } }, {
       onSuccess: () => {
         setSuccess(true);
         queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() });
@@ -197,7 +224,7 @@ function VisitEntry({ memberId, onDone, onCancel, compact = false }: { memberId:
         {onCancel && <button onClick={onCancel} aria-label="Đóng biểu mẫu lượt ghé" className="rounded-lg p-2 text-stone-500 hover:bg-stone-200" data-testid="button-cancel-visit"><X size={17} /></button>}
       </div>
       {success ? <div role="status" className="flex items-center gap-3 rounded-xl bg-[#e4efe2] p-4 text-sm font-medium text-emerald-950" data-testid="status-visit-success"><CheckCircle2 size={19} />Đã ghi nhận lượt ghé. Cảm ơn bạn đã chăm sóc khách quen.</div> : (
-        <form onSubmit={submit} className="space-y-4">
+        <form noValidate onSubmit={submit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-xs font-semibold text-stone-700">Số khách
               <input required type="number" min="1" max="50" value={partySize} onChange={e => setPartySize(e.target.value)} className="form-control mt-1.5" data-testid="input-party-size" />
@@ -249,7 +276,7 @@ function HomePage() {
             <div className="flex items-center rounded-2xl border border-amber-50/15 bg-amber-50/[.08] px-4 transition focus-within:border-[#dfb980]/75 focus-within:bg-amber-50/[.12]">
               <span className="mr-3 font-mono-label text-sm text-amber-50/50">+84</span>
               <input id="phone-search" type="tel" value={phone} onChange={e => { setPhone(e.target.value); setActiveMember(null); }} placeholder="Nhập số điện thoại khách" className="h-[58px] min-w-0 flex-1 bg-transparent text-lg text-amber-50 outline-none placeholder:text-amber-50/30" data-testid="input-phone-lookup" />
-              {phone && <button onClick={() => { setPhone(''); setActiveMember(null); }} aria-label="Xóa nội dung tìm kiếm" className="rounded-lg p-2 text-amber-50/55 hover:bg-white/10" data-testid="button-clear-search"><X size={16} /></button>}
+              {phone && <button onClick={() => { setPhone(''); setActiveMember(null); }} aria-label="Xóa nội dung tra cứu" className="rounded-lg p-2 text-amber-50/55 hover:bg-white/10" data-testid="button-clear-search"><X size={16} /></button>}
             </div>
             <div className="mt-5 flex items-center gap-2 text-[11px] text-amber-50/50"><ShieldCheck size={14} className="text-[#d6b96b]" />Dùng số điện thoại khách đã đăng ký.</div>
             <div className="mt-8 border-t border-amber-50/10 pt-5">
@@ -312,7 +339,7 @@ function DashboardPage() {
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Thống kê thành viên">
         {statCards.map(({ label, value, icon: Icon, note, accent }, i) => <article key={label} className="rounded-2xl border border-stone-300/75 bg-[#fbf8f0] p-5 shadow-[0_5px_18px_hsl(40_24%_40%/.04)]" data-testid={`card-stat-${i}`}>
           <div className="flex items-start justify-between"><p className="text-xs font-semibold text-stone-600">{label}</p><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${accent}`}><Icon size={17} /></span></div>
-          <p className="font-editorial mt-4 text-[2rem] leading-none text-emerald-950" data-testid={`text-stat-${i}`}>{value.toLocaleString()}</p><p className="mt-2 text-[11px] text-stone-500">{note}</p>
+          <p className="font-editorial mt-4 text-[2rem] leading-none text-emerald-950" data-testid={`text-stat-${i}`}>{value.toLocaleString('vi-VN')}</p><p className="mt-2 text-[11px] text-stone-500">{note}</p>
         </article>)}
       </section>
       <section className="mt-5 grid gap-4 xl:grid-cols-[1.35fr_.65fr]">
@@ -374,19 +401,22 @@ function MembersPage() {
 function MemberForm({ initial, onSave, onCancel, saving, submitLabel }: { initial?: { fullName: string; phone: string; birthday?: string | null; notes?: string | null }; onSave: (data: { fullName: string; phone: string; birthday: string | null; notes: string | null }) => void; onCancel?: () => void; saving: boolean; submitLabel: string }) {
   const [fullName, setFullName] = useState(initial?.fullName ?? '');
   const [phone, setPhone] = useState(initial?.phone ?? '');
-  const [birthday, setBirthday] = useState(initial?.birthday?.slice(0,10) ?? '');
+  const [birthday, setBirthday] = useState(birthdayInputValue(initial?.birthday));
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [issue, setIssue] = useState('');
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!fullName.trim()) { setIssue('Vui lòng nhập họ và tên.'); return; }
     if (phone.replace(/\D/g, '').length < 8) { setIssue('Vui lòng nhập số điện thoại có ít nhất 8 chữ số.'); return; }
+    const birthdayValue = birthday.trim() ? birthdayStorageValue(birthday) : null;
+    if (birthday.trim() && !birthdayValue) { setIssue('Ngày sinh không hợp lệ. Hãy nhập theo định dạng ngày/tháng/năm.'); return; }
     setIssue('');
-    onSave({ fullName: fullName.trim(), phone: phone.trim(), birthday: birthday || null, notes: notes.trim() || null });
+    onSave({ fullName: fullName.trim(), phone: phone.trim(), birthday: birthdayValue, notes: notes.trim() || null });
   };
-  return <form onSubmit={submit} className="space-y-5" data-testid="form-member">
+  return <form noValidate onSubmit={submit} className="space-y-5" data-testid="form-member">
     <label className="block text-xs font-semibold text-emerald-950">Họ và tên <span className="text-[#b75e3c]">*</span><input required maxLength={120} value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Tên khách thường dùng" className="form-control mt-2" data-testid="input-member-name" /></label>
     <label className="block text-xs font-semibold text-emerald-950">Số điện thoại <span className="text-[#b75e3c]">*</span><input required type="tel" minLength={8} maxLength={20} value={phone} onChange={e => setPhone(e.target.value)} placeholder="+84 90 123 4567" className="form-control mt-2" data-testid="input-member-phone" /><span className="mt-1.5 block font-normal text-stone-500">Dùng để nhận ra khách khi quay lại.</span></label>
-    <label className="block text-xs font-semibold text-emerald-950">Ngày sinh <span className="font-normal text-stone-500">(không bắt buộc)</span><input type="date" value={birthday} onChange={e => setBirthday(e.target.value)} className="form-control mt-2" data-testid="input-member-birthday" /></label>
+    <label className="block text-xs font-semibold text-emerald-950">Ngày sinh <span className="font-normal text-stone-500">(không bắt buộc)</span><input type="text" inputMode="numeric" maxLength={10} value={birthday} onChange={e => setBirthday(e.target.value)} placeholder="dd/mm/yyyy" className="form-control mt-2" data-testid="input-member-birthday" /><span className="mt-1.5 block font-normal text-stone-500">Nhập theo thứ tự ngày/tháng/năm, ví dụ 25/12/1995.</span></label>
     <label className="block text-xs font-semibold text-emerald-950">Ghi chú <span className="font-normal text-stone-500">(không bắt buộc)</span><textarea maxLength={2000} rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Sở thích hoặc điều cần nhớ" className="form-control mt-2 resize-y py-3" data-testid="input-member-notes" /></label>
     {issue && <p className="text-xs font-medium text-rose-800" role="alert" data-testid="status-form-error">{issue}</p>}
     <div className="flex flex-col-reverse gap-2 border-t border-stone-200 pt-5 sm:flex-row sm:justify-end">{onCancel && <button type="button" onClick={onCancel} className="min-h-11 rounded-xl border border-stone-300 px-5 text-sm font-semibold text-stone-700 hover:bg-stone-100" data-testid="button-cancel-member">Hủy</button>}<button disabled={saving} type="submit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-900 px-5 text-sm font-semibold text-amber-50 hover:bg-emerald-800 disabled:opacity-60" data-testid="button-submit-member">{saving ? <LoaderCircle size={16} className="animate-spin" /> : <Check size={16} />}{submitLabel}</button></div>
@@ -448,7 +478,7 @@ function MemberProfilePage() {
            <button onClick={() => { setEditing(!editing); setShowVisitForm(false); }} className="inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-xl border border-amber-50/20 px-4 text-xs font-semibold text-amber-50 hover:bg-amber-50/10 sm:self-center" data-testid="button-edit-member">{editing ? <X size={15} /> : <span className="text-base leading-none">+</span>}{editing ? 'Đóng chỉnh sửa' : 'Sửa hồ sơ'}</button>
         </div>
         <div className="relative mt-7 grid grid-cols-2 gap-2 border-t border-amber-50/10 pt-5 sm:grid-cols-4">
-          {[[`Lượt ghé`, String(member.visitCount)], ['Tổng chi tiêu', currency(member.totalSpend)], ['Số khách trung bình', member.averagePartySize ? `${member.averagePartySize.toFixed(1)} khách` : '—'], ['Lần ghé gần nhất', member.lastVisitAt ? dateLabel(member.lastVisitAt,{day:'numeric',month:'short'}) : 'Chưa có']].map(([label, value]) => <div key={label} className="rounded-xl bg-amber-50/[.055] px-3 py-2.5"><p className="font-mono-label text-[8px] uppercase tracking-[.15em] text-amber-50/45">{label}</p><p className="mt-1 text-sm font-semibold text-amber-50" data-testid={`text-profile-${label.toLowerCase().replaceAll(' ','-')}`}>{value}</p></div>)}
+          {[['Lượt ghé', String(member.visitCount)], ['Tổng chi tiêu', currency(member.totalSpend)], ['Số khách trung bình', member.averagePartySize ? `${member.averagePartySize.toFixed(1)} khách` : '—'], ['Lần ghé gần nhất', member.lastVisitAt ? dateLabel(member.lastVisitAt,{day:'numeric',month:'short'}) : 'Chưa có']].map(([label, value]) => <div key={label} className="rounded-xl bg-amber-50/[.055] px-3 py-2.5"><p className="font-mono-label text-[8px] uppercase tracking-[.15em] text-amber-50/45">{label}</p><p className="mt-1 text-sm font-semibold text-amber-50" data-testid={`text-profile-${label.toLowerCase().replaceAll(' ','-')}`}>{value}</p></div>)}
         </div>
       </div>
       {editing && <div className="border-b border-stone-200 bg-[#f4f0e6] p-5 sm:p-7"><div className="mb-5"><p className="font-mono-label text-[9px] uppercase tracking-[.18em] text-emerald-800/65">Thông tin thành viên</p><h2 className="font-editorial mt-1 text-2xl text-emerald-950">Cập nhật thông tin khách.</h2></div><MemberForm initial={member} saving={update.isPending} submitLabel="Lưu thay đổi" onCancel={() => setEditing(false)} onSave={data => {
@@ -466,7 +496,7 @@ function MemberProfilePage() {
         {showVisitForm ? <VisitEntry memberId={memberId} onCancel={() => setShowVisitForm(false)} onDone={() => { setSuccess('Đã ghi nhận lượt ghé.'); window.setTimeout(() => setSuccess(''), 3500); setShowVisitForm(false); }} /> : <button onClick={() => setShowVisitForm(true)} className="mb-5 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-[#dcb47c] px-5 text-sm font-bold text-emerald-950 shadow-[0_5px_15px_hsl(30_50%_45%/.12)] transition hover:-translate-y-0.5 hover:bg-[#e6c48d]" data-testid="button-open-visit"><CheckCircle2 size={17} /> Ghi nhận lượt ghé <ArrowRight size={15} /></button>}
         <div className="rounded-2xl border border-stone-300/75 bg-[#fbf8f0] p-5 sm:p-6">
           <div className="mb-4"><p className="font-mono-label text-[9px] uppercase tracking-[.18em] text-emerald-800/65">Lịch sử gắn bó</p><h2 className="font-editorial mt-1 text-2xl text-emerald-950">Lịch sử lượt ghé</h2></div>
-          {visitQuery.isLoading ? <div className="space-y-3" data-testid="loading-visits"><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : visitQuery.isError ? <ErrorNotice message="Chưa tải được lịch sử lượt ghé." onRetry={() => visitQuery.refetch()} /> : visitQuery.data?.length ? <div className="space-y-2">{[...visitQuery.data].sort((a,b)=>new Date(b.arrivedAt).getTime()-new Date(a.arrivedAt).getTime()).map((visit,index) => <article key={visit.id} className="relative flex gap-3 rounded-xl bg-[#f3efe5] p-3.5" data-testid={`row-visit-${visit.id}`}><span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-800"><Clock3 size={15} /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap justify-between gap-x-2 gap-y-1"><p className="text-xs font-bold text-emerald-950" data-testid={`text-visit-date-${visit.id}`}>{dateLabel(visit.arrivedAt,{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</p><p className="text-xs font-semibold text-emerald-950">{currency(visit.billAmount)}</p></div><p className="mt-1 text-[10px] text-stone-600">{visit.partySize} {visit.partySize === 1 ? 'khách' : 'khách'}{visit.note ? ` · ${visit.note}` : ''}</p></div>{index===0 && <span className="absolute -right-1 -top-1 rounded-full bg-[#e1ebdf] px-2 py-0.5 text-[8px] font-bold uppercase tracking-[.1em] text-emerald-800">Gần nhất</span>}</article>)}</div> : <EmptyList title="Lượt ghé đầu tiên có thể bắt đầu hôm nay" detail="Chưa có lịch sử lượt ghé. Hãy ghi nhận khi khách đến quán." />}
+          {visitQuery.isLoading ? <div className="space-y-3" data-testid="loading-visits"><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : visitQuery.isError ? <ErrorNotice message="Chưa tải được lịch sử lượt ghé." onRetry={() => visitQuery.refetch()} /> : visitQuery.data?.length ? <div className="space-y-2">{[...visitQuery.data].sort((a,b)=>new Date(b.arrivedAt).getTime()-new Date(a.arrivedAt).getTime()).map((visit,index) => <article key={visit.id} className="relative flex gap-3 rounded-xl bg-[#f3efe5] p-3.5" data-testid={`row-visit-${visit.id}`}><span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-800"><Clock3 size={15} /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap justify-between gap-x-2 gap-y-1"><p className="text-xs font-bold text-emerald-950" data-testid={`text-visit-date-${visit.id}`}>{dateLabel(visit.arrivedAt,{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</p><p className="text-xs font-semibold text-emerald-950">{currency(visit.billAmount)}</p></div><p className="mt-1 text-[10px] text-stone-600">{visit.partySize} khách{visit.note ? ` · ${visit.note}` : ''}</p></div>{index===0 && <span className="absolute -right-1 -top-1 rounded-full bg-[#e1ebdf] px-2 py-0.5 text-[8px] font-bold uppercase tracking-[.1em] text-emerald-800">Gần nhất</span>}</article>)}</div> : <EmptyList title="Lượt ghé đầu tiên có thể bắt đầu hôm nay" detail="Chưa có lịch sử lượt ghé. Hãy ghi nhận khi khách đến quán." />}
           <p className="mt-4 text-[10px] leading-4 text-stone-500">Quyền lợi theo hạng thành viên vẫn là đề xuất, chờ chủ quán duyệt.</p>
         </div>
       </section>
