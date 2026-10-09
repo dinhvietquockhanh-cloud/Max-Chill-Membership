@@ -6,6 +6,7 @@ import {
   CreateVisitBody,
   CreateVisitParams,
   CreateVisitResponse,
+  DeleteMemberParams,
   GetMemberParams,
   GetMemberResponse,
   ListMemberVisitsParams,
@@ -151,6 +152,26 @@ router.patch("/members/:memberId", async (req, res): Promise<void> => {
     }
     throw error;
   }
+});
+
+router.delete("/members/:memberId", async (req, res): Promise<void> => {
+  const params = DeleteMemberParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [member] = await db
+    .delete(membersTable)
+    .where(eq(membersTable.id, params.data.memberId))
+    .returning({ id: membersTable.id });
+
+  if (!member) {
+    res.status(404).json({ error: "Không tìm thấy thành viên." });
+    return;
+  }
+
+  res.sendStatus(204);
 });
 
 router.post("/members/:memberId/visits", async (req, res): Promise<void> => {

@@ -113,6 +113,21 @@ paths:
           description: Member not found
         "409":
           description: A member already uses this phone number
+    delete:
+      operationId: deleteMember
+      tags: [members]
+      summary: Permanently delete a member and all visit history
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Member and associated visit history deleted
+        "404":
+          description: Member not found
   /members/{memberId}/visits:
     post:
       operationId: createVisit

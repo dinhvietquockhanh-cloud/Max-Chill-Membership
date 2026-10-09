@@ -148,6 +148,16 @@ export const UpdateMemberResponse = zod.object({
 
 
 /**
+ * @summary Permanently delete a member and all visit history
+ */
+export const DeleteMemberParams = zod.object({
+  "memberId": zod.coerce.number().int()
+})
+
+export const DeleteMemberResponse = zod.void()
+
+
+/**
  * @summary Record a member visit
  */
 export const CreateVisitParams = zod.object({

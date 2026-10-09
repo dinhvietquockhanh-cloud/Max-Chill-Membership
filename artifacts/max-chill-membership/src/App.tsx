@@ -3,6 +3,16 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import NotFound from '@/pages/not-found';
 import {
   getGetDashboardQueryKey,
@@ -12,6 +22,7 @@ import {
   getListMembersQueryKey,
   useCreateMember,
   useCreateVisit,
+  useDeleteMember,
   useGetDashboard,
   useGetMember,
   useHealthCheck,
@@ -35,10 +46,12 @@ import {
   LoaderCircle,
   MapPin,
   Menu,
+  Pencil,
   Plus,
   Search,
   ShieldCheck,
   Sprout,
+  Trash2,
   UsersRound,
   Wallet,
   X,
@@ -371,8 +384,29 @@ function EmptyList({ title, detail }: { title: string; detail: string }) {
 
 function MembersPage() {
   const [search, setSearch] = useState('');
+  const queryClient = useQueryClient();
   const params = useMemo(() => search.trim() ? { search: search.trim() } : undefined, [search]);
   const members = useListMembers(params);
+  const deleteMember = useDeleteMember();
+  const [memberToDelete, setMemberToDelete] = useState<{ id: number; fullName: string } | null>(null);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteSuccess, setDeleteSuccess] = useState('');
+  const confirmDelete = () => {
+    if (!memberToDelete) return;
+    const deletedMember = memberToDelete;
+    setDeleteError('');
+    deleteMember.mutate({ memberId: deletedMember.id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardQueryKey() });
+        queryClient.removeQueries({ queryKey: getGetMemberQueryKey(deletedMember.id) });
+        queryClient.removeQueries({ queryKey: getListMemberVisitsQueryKey(deletedMember.id) });
+        setMemberToDelete(null);
+        setDeleteSuccess(`Đã xóa ${deletedMember.fullName} cùng lịch sử lượt ghé.`);
+      },
+      onError: () => setDeleteError('Chưa xóa được thành viên. Vui lòng thử lại.'),
+    });
+  };
   return (
     <div className="page-enter">
       <PageTitle eyebrow="Danh sách thành viên" title="Rất vui được gặp lại." subtitle="Tìm khách quen, xem hạng thành viên hoặc chào đón người mới." action={<ButtonLink href="/members/new" testId="link-new-member"><Plus size={16} /> Đăng ký thành viên</ButtonLink>} />
