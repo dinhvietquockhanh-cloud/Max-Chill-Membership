@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { PwaInstallControl } from '@/components/pwa-install-control';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
@@ -178,6 +179,7 @@ function AppShell({ children }: { children: ReactNode }) {
             <p className="mt-1 text-[11px] leading-5 text-amber-50/50">Chào đón khách quay lại khu vườn, qua từng lần ghé thăm.</p>
           </div>
           <div className="mt-4 px-1"><ServicePulse /></div>
+          <div className="mt-4"><PwaInstallControl /></div>
         </div>
       </aside>
       <div className="lg:pl-[258px]">
@@ -187,7 +189,10 @@ function AppShell({ children }: { children: ReactNode }) {
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-900 text-amber-100"><Leaf size={19} /></span>
               <span><span className="block font-editorial text-lg leading-none text-emerald-950">Max Chill</span><span className="mt-1 block text-[9px] uppercase tracking-[.16em] text-stone-500">Thành viên khu vườn</span></span>
             </Link>
-            <button aria-label="Mở hoặc đóng điều hướng" onClick={() => setMobileOpen(!mobileOpen)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 text-emerald-950" data-testid="button-mobile-menu">{mobileOpen ? <X size={19} /> : <Menu size={19} />}</button>
+            <div className="flex items-center gap-2">
+              <PwaInstallControl compact />
+              <button aria-label="Mở hoặc đóng điều hướng" onClick={() => setMobileOpen(!mobileOpen)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 text-emerald-950" data-testid="button-mobile-menu">{mobileOpen ? <X size={19} /> : <Menu size={19} />}</button>
+            </div>
           </div>
           {mobileOpen && <nav className="grid grid-cols-2 gap-2 border-t border-stone-300/70 px-4 py-3" aria-label="Điều hướng trên điện thoại">{navItems.map(({ href, label, testId, icon: Icon }) => <Link key={href} href={href} data-testid={`link-mobile-${testId}`} className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold ${location === href || (href === '/members' && location.startsWith('/members')) ? 'bg-emerald-900 text-amber-50' : 'bg-white/60 text-emerald-950'}`}><Icon size={15} />{label}</Link>)}<div className="col-span-2 px-1 pt-1"><ServicePulse /></div></nav>}
         </header>

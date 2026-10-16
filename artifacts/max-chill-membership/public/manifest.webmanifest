@@ -1,0 +1,26 @@
+{
+  "id": "./",
+  "name": "Thành viên Max Chill Garden",
+  "short_name": "Max Chill",
+  "description": "Quản lý thành viên và lượt ghé tại Max Chill Garden.",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f0e6",
+  "theme_color": "#193f32",
+  "icons": [
+    {
+      "src": "./pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
