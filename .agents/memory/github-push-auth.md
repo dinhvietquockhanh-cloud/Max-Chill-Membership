@@ -3,7 +3,7 @@ name: GitHub push authentication
 description: Recovery guidance for GitHub pushes when the Replit OAuth connection is stale.
 ---
 
-When Git operations against GitHub return 401 even though the Replit GitHub integration appears active, treat the OAuth authorization as stale. Repeated `git push` attempts or rebinding the same connection may not repair it; ask the user to disconnect and reconnect GitHub through the workspace Integrations or Git pane. Never request a personal access token in chat.
+When Git operations against GitHub return 401 even though the Replit GitHub integration appears active, treat the OAuth authorization as stale. Repeated `git push` attempts or rebinding the same connection may not repair it; ask the user to disconnect and reconnect GitHub through the workspace Integrations or Git pane. In the Replit Git pane, the `Remote Updates` warning that says no git providers are connected has an `Edit Settings` button for setting up the provider. Never request a personal access token in chat.
 
 **Why:** The GitHub remote rejected the current authorization, while the Agent's reconnect flow could not proceed because the connection was marked disconnected.
 
