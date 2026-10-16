@@ -34,18 +34,15 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      # Cài đặt tất cả dependencies từ thư mục gốc của monorepo
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --ignore-scripts
 
-      # Build đúng project con bằng tính năng filter của pnpm workspace
       - name: Build project
         env:
           PORT: 5000
-          BASE_PATH: /max-chill-membership/
+          BASE_PATH: /Max-Chill-Membership/
         run: pnpm --filter max-chill-membership run build
 
-      # Tạo file .nojekyll để tránh bị GitHub Pages ẩn các file hệ thống của Vite
       - name: Create .nojekyll
         run: touch artifacts/max-chill-membership/dist/.nojekyll
 
