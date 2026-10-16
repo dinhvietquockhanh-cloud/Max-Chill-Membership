@@ -1,1 +1,2 @@
 - [Max Chill pilot](max-chill-pilot.md) — the first rollout targets 100 guests; proposed membership conditions and benefits still need the owner's approval.
+- [Patch hunk ordering](patch-hunk-order.md) — order same-file `apply_patch` hunks top-to-bottom, or split them into separate calls.

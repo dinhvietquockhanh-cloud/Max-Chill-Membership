@@ -414,20 +414,56 @@ function MembersPage() {
         <label className="relative block w-full sm:max-w-[420px]"><Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-500" /><input type="search" placeholder="Tìm theo tên hoặc số điện thoại" value={search} onChange={e => setSearch(e.target.value)} className="form-control h-12 pl-11" data-testid="input-member-search" /></label>
         {!members.isLoading && !members.isError && <p className="text-xs text-stone-500" data-testid="text-member-results">Tìm thấy {members.data?.length ?? 0} thành viên</p>}
       </div>
+      {deleteSuccess && <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status" data-testid="status-member-deleted">{deleteSuccess}</p>}
       {members.isLoading ? <div className="space-y-3" data-testid="loading-members">{[1,2,3,4].map(n => <Skeleton key={n} className="h-[76px]" />)}</div> : members.isError ? <ErrorNotice message="Chưa tải được danh sách thành viên." onRetry={() => members.refetch()} /> : members.data?.length ? (
         <div className="overflow-hidden rounded-2xl border border-stone-300/80 bg-[#fbf8f0]">
-          <div className="hidden grid-cols-[minmax(220px,1.5fr)_1fr_.7fr_.8fr_24px] gap-4 border-b border-stone-200 bg-[#f5f0e5] px-5 py-3 font-mono-label text-[9px] uppercase tracking-[.14em] text-stone-500 md:grid"><span>Thành viên</span><span>Hạng</span><span>Lượt ghé</span><span>Ghé gần nhất</span><span /></div>
-          {members.data.map(member => <Link key={member.id} href={`/members/${member.id}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-stone-200/75 px-4 py-4 transition hover:bg-[#f4f0e6] last:border-b-0 sm:px-5 md:grid-cols-[minmax(220px,1.5fr)_1fr_.7fr_.8fr_24px] md:gap-4" data-testid={`row-member-${member.id}`}>
-            <span className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[#e8ede3] font-editorial text-sm text-emerald-900">{initials(member.fullName)}</span><span className="min-w-0"><span className="block truncate text-sm font-semibold text-emerald-950">{member.fullName}</span><span className="mt-1 block font-mono-label text-[10px] text-stone-500">{member.phone}</span></span></span>
-            <span className="hidden md:block"><span className={`tier-pill ${tierClass(member.tier)}`} data-testid={`status-member-tier-${member.id}`}>{tierLabel(member.tier)}</span></span>
-            <span className="text-right text-xs font-semibold text-emerald-950 md:text-left">{member.visitCount}<span className="ml-1 font-normal text-stone-500 md:hidden">lượt ghé ·</span></span>
-            <span className="col-start-1 text-[10px] text-stone-500 md:col-start-auto md:text-xs" data-testid={`text-member-last-visit-${member.id}`}>{member.lastVisitAt ? `Ghé gần nhất ${dateLabel(member.lastVisitAt,{day:'numeric',month:'short',year:'numeric'})}` : 'Chưa có lượt ghé'}</span>
-            <ChevronRight size={16} className="col-start-2 row-start-1 text-stone-400 md:col-start-auto md:row-start-auto" />
-            <span className={`tier-pill col-start-2 row-start-2 justify-self-end md:hidden ${tierClass(member.tier)}`}>{tierLabel(member.tier)}</span>
-          </Link>)}
+          <div className="hidden grid-cols-[minmax(220px,1.5fr)_1fr_.7fr_.8fr_auto] gap-4 border-b border-stone-200 bg-[#f5f0e5] px-5 py-3 font-mono-label text-[9px] uppercase tracking-[.14em] text-stone-500 md:grid"><span>Thành viên</span><span>Hạng</span><span>Lượt ghé</span><span>Ghé gần nhất</span><span className="text-right">Thao tác</span></div>
+          {members.data.map(member => <div key={member.id} className="flex items-center border-b border-stone-200/75 transition hover:bg-[#f4f0e6] last:border-b-0" data-testid={`row-member-${member.id}`}>
+            <Link href={`/members/${member.id}`} className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-4 sm:px-5 md:grid-cols-[minmax(220px,1.5fr)_1fr_.7fr_.8fr]" data-testid={`link-member-${member.id}`}>
+              <span className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[#e8ede3] font-editorial text-sm text-emerald-900">{initials(member.fullName)}</span><span className="min-w-0"><span className="block truncate text-sm font-semibold text-emerald-950">{member.fullName}</span><span className="mt-1 block font-mono-label text-[10px] text-stone-500">{member.phone}</span></span></span>
+              <span className="hidden md:block"><span className={`tier-pill ${tierClass(member.tier)}`} data-testid={`status-member-tier-${member.id}`}>{tierLabel(member.tier)}</span></span>
+              <span className="text-right text-xs font-semibold text-emerald-950 md:text-left">{member.visitCount}<span className="ml-1 font-normal text-stone-500 md:hidden">lượt ghé ·</span></span>
+              <span className="col-start-1 text-[10px] text-stone-500 md:col-start-auto md:text-xs" data-testid={`text-member-last-visit-${member.id}`}>{member.lastVisitAt ? `Ghé gần nhất ${dateLabel(member.lastVisitAt,{day:'numeric',month:'short',year:'numeric'})}` : 'Chưa có lượt ghé'}</span>
+              <span className={`tier-pill col-start-2 row-start-2 justify-self-end md:hidden ${tierClass(member.tier)}`}>{tierLabel(member.tier)}</span>
+            </Link>
+            <div className="flex shrink-0 items-center gap-1 pr-2 sm:pr-4">
+              <Link href={`/members/${member.id}/edit`} aria-label={`Chỉnh sửa hồ sơ ${member.fullName}`} title="Chỉnh sửa hồ sơ" className="flex h-9 w-9 items-center justify-center rounded-lg text-stone-600 transition hover:bg-emerald-100 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" data-testid={`button-edit-member-${member.id}`}><Pencil size={16} /></Link>
+              <button type="button" onClick={() => { setDeleteError(''); setDeleteSuccess(''); setMemberToDelete({ id: member.id, fullName: member.fullName }); }} aria-label={`Xóa hồ sơ ${member.fullName}`} title="Xóa thành viên" className="flex h-9 w-9 items-center justify-center rounded-lg text-rose-700 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600" data-testid={`button-delete-member-${member.id}`}><Trash2 size={16} /></button>
+            </div>
+          </div>)}
         </div>
       ) : <EmptyList title={search ? 'Không tìm thấy thành viên phù hợp' : 'Danh sách đang chờ thành viên đầu tiên'} detail={search ? 'Thử tìm bằng tên hoặc số điện thoại khác.' : 'Đăng ký khách đầu tiên để hồ sơ xuất hiện tại đây.'} />}
       <p className="mt-4 text-[11px] text-stone-500">Hạng hiển thị theo dữ liệu thành viên hiện tại. Quyền lợi đề xuất chưa được tự động áp dụng.</p>
+      <AlertDialog open={memberToDelete !== null} onOpenChange={open => {
+        if (!open && !deleteMember.isPending) {
+          setMemberToDelete(null);
+          setDeleteError('');
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-emerald-950">Xóa vĩnh viễn thành viên?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hồ sơ của <strong className="font-semibold text-foreground">{memberToDelete?.fullName}</strong> cùng toàn bộ lịch sử lượt ghé và hóa đơn sẽ bị xóa. Thao tác này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && <p className="text-sm text-rose-700" role="alert" data-testid="status-delete-member-error">{deleteError}</p>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMember.isPending}>Giữ lại</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteMember.isPending}
+              onClick={event => {
+                event.preventDefault();
+                confirmDelete();
+              }}
+              className="bg-rose-700 text-white hover:bg-rose-800 focus-visible:ring-rose-700"
+              data-testid="button-confirm-delete-member"
+            >
+              {deleteMember.isPending ? 'Đang xóa…' : 'Xóa vĩnh viễn'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -484,6 +520,7 @@ function NewMemberPage() {
 }
 
 function MemberProfilePage() {
+  const [location] = useLocation();
   const params = useParams<{ memberId: string }>();
   const memberId = Number(params.memberId);
   const validId = Number.isFinite(memberId) && memberId > 0;
@@ -491,7 +528,7 @@ function MemberProfilePage() {
   const visitQuery = useListMemberVisits(validId ? memberId : 0, { query: { enabled: validId, queryKey: getListMemberVisitsQueryKey(validId ? memberId : 0) } });
   const update = useUpdateMember();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(() => location.endsWith('/edit'));
   const [showVisitForm, setShowVisitForm] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -564,6 +601,7 @@ function Router() {
     <Route path="/dashboard" component={DashboardPage} />
     <Route path="/members" component={MembersPage} />
     <Route path="/members/new" component={NewMemberPage} />
+    <Route path="/members/:memberId/edit" component={MemberProfilePage} />
     <Route path="/members/:memberId" component={MemberProfilePage} />
     <Route path="/tiers" component={TiersPage} />
     <Route component={NotFound} />
