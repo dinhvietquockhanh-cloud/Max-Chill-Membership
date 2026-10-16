@@ -25,7 +25,6 @@ jobs:
         with:
           node-version: 20
 
-      # Cài đặt pnpm vì project dùng catalog của pnpm
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -35,12 +34,11 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      # Cài đặt thư viện bằng pnpm
+      # Cài đặt dependencies từ root monorepo để không bị thiếu package chung
       - name: Install dependencies
-        working-directory: artifacts/max-chill-membership
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile --config.onlyBuiltDependencies=esbuild
 
-      # Build project bằng pnpm
+      # Chui vào thư mục con để build project Vite
       - name: Build project
         working-directory: artifacts/max-chill-membership
         env:
