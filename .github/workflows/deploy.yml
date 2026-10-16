@@ -28,11 +28,17 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Install and Build
+      - name: Install dependencies
         working-directory: artifacts/max-chill-membership
-        run: |
-          npm install
-          npm run build
+        run: npm install
+
+      # Truyền PORT và BASE_PATH vào khi build
+      - name: Build project
+        working-directory: artifacts/max-chill-membership
+        env:
+          PORT: 5000
+          BASE_PATH: /Max-Chill-Membership/
+        run: npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
