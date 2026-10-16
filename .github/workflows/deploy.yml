@@ -37,14 +37,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --ignore-scripts
 
+      # Đổi BASE_PATH thành chữ thường để khớp với tên đường dẫn thực tế của GitHub Pages
       - name: Build project
         working-directory: artifacts/max-chill-membership
         env:
           PORT: 5000
-          BASE_PATH: /Max-Chill-Membership/
+          BASE_PATH: /max-chill-membership/
         run: pnpm run build
 
-      # Tạo file .nojekyll để GitHub Pages không bỏ qua các file JS/CSS bắt đầu bằng dấu gạch dưới (_)
       - name: Create .nojekyll
         run: touch artifacts/max-chill-membership/dist/.nojekyll
 
