@@ -520,7 +520,6 @@ function NewMemberPage() {
 }
 
 function MemberProfilePage() {
-  const [location] = useLocation();
   const params = useParams<{ memberId: string }>();
   const memberId = Number(params.memberId);
   const validId = Number.isFinite(memberId) && memberId > 0;
@@ -528,7 +527,7 @@ function MemberProfilePage() {
   const visitQuery = useListMemberVisits(validId ? memberId : 0, { query: { enabled: validId, queryKey: getListMemberVisitsQueryKey(validId ? memberId : 0) } });
   const update = useUpdateMember();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(() => location.endsWith('/edit'));
+  const [editing, setEditing] = useState(false);
   const [showVisitForm, setShowVisitForm] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -601,7 +600,6 @@ function Router() {
     <Route path="/dashboard" component={DashboardPage} />
     <Route path="/members" component={MembersPage} />
     <Route path="/members/new" component={NewMemberPage} />
-    <Route path="/members/:memberId/edit" component={MemberProfilePage} />
     <Route path="/members/:memberId" component={MemberProfilePage} />
     <Route path="/tiers" component={TiersPage} />
     <Route component={NotFound} />
