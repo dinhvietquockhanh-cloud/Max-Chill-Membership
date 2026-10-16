@@ -34,17 +34,19 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      # Dùng cờ --ignore-scripts để bỏ qua kiểm tra build script của pnpm
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile --ignore-scripts
 
-      # Chui vào thư mục con để build project Vite
       - name: Build project
         working-directory: artifacts/max-chill-membership
         env:
           PORT: 5000
           BASE_PATH: /Max-Chill-Membership/
         run: pnpm run build
+
+      # Tạo file .nojekyll để GitHub Pages không bỏ qua các file JS/CSS bắt đầu bằng dấu gạch dưới (_)
+      - name: Create .nojekyll
+        run: touch artifacts/max-chill-membership/dist/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
