@@ -28,7 +28,6 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      # Chui vào thư mục con để cài package và build project Vite
       - name: Install and Build
         working-directory: artifacts/max-chill-membership
         run: |
