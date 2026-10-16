@@ -34,9 +34,9 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      # Cài đặt dependencies từ root monorepo để không bị thiếu package chung
+      # Dùng cờ --ignore-scripts để bỏ qua kiểm tra build script của pnpm
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile --config.onlyBuiltDependencies=esbuild
+        run: pnpm install --no-frozen-lockfile --ignore-scripts
 
       # Chui vào thư mục con để build project Vite
       - name: Build project
