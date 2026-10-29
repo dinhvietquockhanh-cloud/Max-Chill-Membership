@@ -4,12 +4,16 @@ A staff-facing membership register for Max Chill Garden: find guests by phone, m
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- Install dependencies with `pnpm install --frozen-lockfile`.
+- Run the app using the managed Replit workflows `artifacts/api-server: API Server` and `artifacts/max-chill-membership: web`. They supply the required ports and frontend base path.
+- The staff app is available at `/`; the API is available at `/api` (local port 8080).
+- The optional Canvas workflow is not needed to run the staff app.
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
+- Build through the artifact configuration so `PORT` and `BASE_PATH` are supplied to Vite.
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/db run push` — initialize or update the development database schema; review any destructive change prompts before proceeding.
+- Required env: `DATABASE_URL` — provided by the Replit development PostgreSQL database; do not put credentials in source files.
+- Health check: `GET /api/healthz`; member and dashboard data are served at `/api/members` and `/api/dashboard`.
 
 ## Stack
 
