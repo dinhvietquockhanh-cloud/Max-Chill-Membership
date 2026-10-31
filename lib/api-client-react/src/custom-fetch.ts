@@ -330,6 +330,17 @@ export async function customFetch<T = unknown>(
   const { responseType = "auto", headers: headersInit, ...init } = options;
 
   const method = resolveMethod(input, init.method);
+  const requestUrl = resolveUrl(input);
+  const apiPath = requestUrl.startsWith("/")
+    ? requestUrl.split("?", 1)[0]
+    : (() => {
+        try {
+          return new URL(requestUrl).pathname;
+        } catch {
+          return "";
+        }
+      })();
+  const isApiRequest = apiPath === "/api" || apiPath.startsWith("/api/");
 
   if (init.body != null && (method === "GET" || method === "HEAD")) {
     throw new TypeError(`customFetch: ${method} requests cannot have a body.`);
@@ -345,7 +356,7 @@ export async function customFetch<T = unknown>(
     headers.set("content-type", "application/json");
   }
 
-  if (responseType === "json" && !headers.has("accept")) {
+  if ((responseType === "json" || isApiRequest) && !headers.has("accept")) {
     headers.set("accept", DEFAULT_JSON_ACCEPT);
   }
 
@@ -365,6 +376,19 @@ export async function customFetch<T = unknown>(
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
     throw new ApiError(response, errorData, requestInfo);
+  }
+
+  if (
+    isApiRequest &&
+    responseType === "auto" &&
+    !hasNoBody(response, method) &&
+    !isJsonMediaType(getMediaType(response.headers))
+  ) {
+    const contentType = getMediaType(response.headers) ?? "không có Content-Type";
+    throw new Error(
+      `API ${method} ${apiPath} trả về ${contentType} thay vì JSON. ` +
+        "Trên VPS, hãy chuyển tiếp /api tới API server trước quy tắc fallback index.html của frontend.",
+    );
   }
 
   return (await parseSuccessBody(response, responseType, requestInfo)) as T;

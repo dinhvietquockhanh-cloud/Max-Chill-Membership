@@ -31,6 +31,7 @@ import {
   useListMembers,
   useUpdateMember,
 } from '@workspace/api-client-react';
+import type { Dashboard, Member, MemberLeader, Visit } from '@workspace/api-client-react';
 import {
   ArrowDownRight,
   ArrowLeft,
@@ -62,6 +63,101 @@ import { Link, Route, Switch, useLocation, useParams } from 'wouter';
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 20_000, retry: 1, refetchOnWindowFocus: false } },
 });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function unwrapApiPayload(value: unknown, keys: string[]): unknown {
+  let payload = value;
+  for (let depth = 0; depth < 3; depth += 1) {
+    if (!isRecord(payload)) break;
+    const current = payload;
+    const key = keys.find(candidate => candidate in current);
+    if (!key) break;
+    payload = current[key];
+  }
+  return payload;
+}
+
+function isMember(value: unknown): value is Member {
+  return isRecord(value)
+    && typeof value.id === 'number'
+    && typeof value.fullName === 'string'
+    && typeof value.phone === 'string'
+    && typeof value.joinedAt === 'string'
+    && (value.birthday === null || typeof value.birthday === 'string')
+    && (value.notes === null || typeof value.notes === 'string')
+    && typeof value.visitCount === 'number'
+    && (value.lastVisitAt === null || typeof value.lastVisitAt === 'string')
+    && (value.averagePartySize === null || typeof value.averagePartySize === 'number')
+    && typeof value.totalSpend === 'number'
+    && (value.tier === 'Member' || value.tier === 'Silver' || value.tier === 'Gold');
+}
+
+function isVisit(value: unknown): value is Visit {
+  return isRecord(value)
+    && typeof value.id === 'number'
+    && typeof value.memberId === 'number'
+    && typeof value.arrivedAt === 'string'
+    && typeof value.partySize === 'number'
+    && typeof value.billAmount === 'number'
+    && (value.note === null || typeof value.note === 'string');
+}
+
+function memberListResponse(payload: unknown): Member[] {
+  const list = unwrapApiPayload(payload, ['data', 'results', 'members', 'items']);
+  if (!Array.isArray(list) || !list.every(isMember)) {
+    throw new Error('API GET /api/members trả về dữ liệu không đúng định dạng danh sách thành viên.');
+  }
+  return list;
+}
+
+function visitListResponse(payload: unknown): Visit[] {
+  const list = unwrapApiPayload(payload, ['data', 'results', 'visits', 'items']);
+  if (!Array.isArray(list) || !list.every(isVisit)) {
+    throw new Error('API GET /api/members/:memberId/visits trả về dữ liệu không đúng định dạng.');
+  }
+  return list;
+}
+
+function isMemberLeader(value: unknown): value is MemberLeader {
+  return isRecord(value)
+    && typeof value.id === 'number'
+    && typeof value.fullName === 'string'
+    && typeof value.phone === 'string'
+    && typeof value.visitCount === 'number'
+    && typeof value.totalSpend === 'number'
+    && (value.tier === 'Member' || value.tier === 'Silver' || value.tier === 'Gold');
+}
+
+function dashboardResponse(payload: unknown): Dashboard {
+  const value = unwrapApiPayload(payload, ['data', 'dashboard']);
+  if (
+    !isRecord(value)
+    || typeof value.totalMembers !== 'number'
+    || typeof value.newMembers !== 'number'
+    || typeof value.returningMembers !== 'number'
+    || typeof value.silverMembers !== 'number'
+    || typeof value.goldMembers !== 'number'
+    || !isRecord(value.pilotCapacity)
+    || typeof value.pilotCapacity.limit !== 'number'
+    || typeof value.pilotCapacity.remaining !== 'number'
+    || !Array.isArray(value.topByVisits)
+    || !value.topByVisits.every(isMemberLeader)
+    || !Array.isArray(value.topBySpend)
+    || !value.topBySpend.every(isMemberLeader)
+  ) {
+    throw new Error('API GET /api/dashboard trả về dữ liệu không đúng định dạng tổng quan.');
+  }
+  return value as unknown as Dashboard;
+}
+
+function apiErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message.startsWith('API ')
+    ? error.message
+    : fallback;
+}
 
 const navItems = [
   { href: '/', label: 'Tra cứu khách', testId: 'quick-check-in', icon: CheckCircle2 },
@@ -274,7 +370,7 @@ function HomePage() {
     return () => window.clearTimeout(timer);
   }, [phone]);
   const params = useMemo(() => search ? { search } : undefined, [search]);
-  const result = useListMembers(params);
+  const result = useListMembers(params, { query: { queryKey: getListMembersQueryKey(params), select: memberListResponse } });
   const results = result.data || [];
   const hasQuery = phone.trim().length > 0;
   const exactPhone = results.find(member => member.phone.replace(/\D/g, '') === phone.replace(/\D/g, ''));
@@ -310,7 +406,7 @@ function HomePage() {
               </div>
             ) : result.isLoading ? (
               <div className="space-y-4 py-2" data-testid="loading-member-lookup"><Skeleton className="h-5 w-32" /><Skeleton className="h-24 w-full" /><Skeleton className="h-12 w-full" /></div>
-            ) : result.isError ? <ErrorNotice message="Chưa thể tra cứu thành viên." onRetry={() => result.refetch()} /> : bestMatch ? (
+            ) : result.isError ? <ErrorNotice message={apiErrorMessage(result.error, 'Chưa thể tra cứu thành viên.')} onRetry={() => result.refetch()} /> : bestMatch ? (
               <div className="animate-in">
                 <div className="mb-5 flex items-center justify-between"><p className="font-mono-label text-[10px] uppercase tracking-[.18em] text-amber-50/50">Thông tin khách</p><span className={`tier-pill ${tierClass(bestMatch.tier)}`} data-testid={`status-member-tier-${bestMatch.id}`}>{tierLabel(bestMatch.tier)}</span></div>
                 <div className="mb-5 flex items-center gap-4">
@@ -340,10 +436,10 @@ function HomePage() {
 }
 
 function DashboardPage() {
-  const dashboard = useGetDashboard();
+  const dashboard = useGetDashboard({ query: { queryKey: getGetDashboardQueryKey(), select: dashboardResponse } });
   const stats = dashboard.data;
   if (dashboard.isLoading) return <div className="page-enter"><PageTitle eyebrow="Tổng quan thành viên" title="Khu vườn qua một ánh nhìn." subtitle="Tóm tắt cộng đồng khách quen đang gắn bó với Max Chill." /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[1,2,3,4].map(n => <Skeleton key={n} className="h-32" />)}<Skeleton className="col-span-full h-72" /></div></div>;
-  if (dashboard.isError || !stats) return <div className="page-enter"><PageTitle eyebrow="Tổng quan thành viên" title="Khu vườn qua một ánh nhìn." subtitle="Tóm tắt cộng đồng khách quen đang gắn bó với Max Chill." /><ErrorNotice message="Chưa tải được số liệu thành viên." onRetry={() => dashboard.refetch()} /></div>;
+  if (dashboard.isError || !stats) return <div className="page-enter"><PageTitle eyebrow="Tổng quan thành viên" title="Khu vườn qua một ánh nhìn." subtitle="Tóm tắt cộng đồng khách quen đang gắn bó với Max Chill." /><ErrorNotice message={apiErrorMessage(dashboard.error, 'Chưa tải được số liệu thành viên.')} onRetry={() => dashboard.refetch()} /></div>;
   const capacityUsed = stats.pilotCapacity.limit > 0 ? Math.max(0, Math.min(100, ((stats.pilotCapacity.limit - stats.pilotCapacity.remaining) / stats.pilotCapacity.limit) * 100)) : 0;
   const statCards = [
     { label: 'Tổng thành viên', value: stats.totalMembers, icon: UsersRound, note: 'Tất cả khách đã đăng ký', accent: 'bg-[#e6efe1] text-emerald-900' },
@@ -391,7 +487,7 @@ function MembersPage() {
   const [search, setSearch] = useState('');
   const queryClient = useQueryClient();
   const params = useMemo(() => search.trim() ? { search: search.trim() } : undefined, [search]);
-  const members = useListMembers(params);
+  const members = useListMembers(params, { query: { queryKey: getListMembersQueryKey(params), select: memberListResponse } });
   const deleteMember = useDeleteMember();
   const [memberToDelete, setMemberToDelete] = useState<{ id: number; fullName: string } | null>(null);
   const [deleteError, setDeleteError] = useState('');
@@ -420,7 +516,7 @@ function MembersPage() {
         {!members.isLoading && !members.isError && <p className="text-xs text-stone-500" data-testid="text-member-results">Tìm thấy {members.data?.length ?? 0} thành viên</p>}
       </div>
       {deleteSuccess && <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status" data-testid="status-member-deleted">{deleteSuccess}</p>}
-      {members.isLoading ? <div className="space-y-3" data-testid="loading-members">{[1,2,3,4].map(n => <Skeleton key={n} className="h-[76px]" />)}</div> : members.isError ? <ErrorNotice message="Chưa tải được danh sách thành viên." onRetry={() => members.refetch()} /> : members.data?.length ? (
+      {members.isLoading ? <div className="space-y-3" data-testid="loading-members">{[1,2,3,4].map(n => <Skeleton key={n} className="h-[76px]" />)}</div> : members.isError ? <ErrorNotice message={apiErrorMessage(members.error, 'Chưa tải được danh sách thành viên.')} onRetry={() => members.refetch()} /> : members.data?.length ? (
         <div className="overflow-hidden rounded-2xl border border-stone-300/80 bg-[#fbf8f0]">
           <div className="hidden grid-cols-[minmax(220px,1.5fr)_1fr_.7fr_.8fr_auto] gap-4 border-b border-stone-200 bg-[#f5f0e5] px-5 py-3 font-mono-label text-[9px] uppercase tracking-[.14em] text-stone-500 md:grid"><span>Thành viên</span><span>Hạng</span><span>Lượt ghé</span><span>Ghé gần nhất</span><span className="text-right">Thao tác</span></div>
           {members.data.map(member => <div key={member.id} className="flex items-center border-b border-stone-200/75 transition hover:bg-[#f4f0e6] last:border-b-0" data-testid={`row-member-${member.id}`}>
@@ -529,7 +625,7 @@ function MemberProfilePage() {
   const memberId = Number(params.memberId);
   const validId = Number.isFinite(memberId) && memberId > 0;
   const memberQuery = useGetMember(validId ? memberId : 0, { query: { enabled: validId, queryKey: getGetMemberQueryKey(validId ? memberId : 0) } });
-  const visitQuery = useListMemberVisits(validId ? memberId : 0, { query: { enabled: validId, queryKey: getListMemberVisitsQueryKey(validId ? memberId : 0) } });
+  const visitQuery = useListMemberVisits(validId ? memberId : 0, { query: { enabled: validId, queryKey: getListMemberVisitsQueryKey(validId ? memberId : 0), select: visitListResponse } });
   const update = useUpdateMember();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -571,7 +667,7 @@ function MemberProfilePage() {
         {showVisitForm ? <VisitEntry memberId={memberId} onCancel={() => setShowVisitForm(false)} onDone={() => { setSuccess('Đã ghi nhận lượt ghé.'); window.setTimeout(() => setSuccess(''), 3500); setShowVisitForm(false); }} /> : <button onClick={() => setShowVisitForm(true)} className="mb-5 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-[#dcb47c] px-5 text-sm font-bold text-emerald-950 shadow-[0_5px_15px_hsl(30_50%_45%/.12)] transition hover:-translate-y-0.5 hover:bg-[#e6c48d]" data-testid="button-open-visit"><CheckCircle2 size={17} /> Ghi nhận lượt ghé <ArrowRight size={15} /></button>}
         <div className="rounded-2xl border border-stone-300/75 bg-[#fbf8f0] p-5 sm:p-6">
           <div className="mb-4"><p className="font-mono-label text-[9px] uppercase tracking-[.18em] text-emerald-800/65">Lịch sử gắn bó</p><h2 className="font-editorial mt-1 text-2xl text-emerald-950">Lịch sử lượt ghé</h2></div>
-          {visitQuery.isLoading ? <div className="space-y-3" data-testid="loading-visits"><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : visitQuery.isError ? <ErrorNotice message="Chưa tải được lịch sử lượt ghé." onRetry={() => visitQuery.refetch()} /> : visitQuery.data?.length ? <div className="space-y-2">{[...visitQuery.data].sort((a,b)=>new Date(b.arrivedAt).getTime()-new Date(a.arrivedAt).getTime()).map((visit,index) => <article key={visit.id} className="relative flex gap-3 rounded-xl bg-[#f3efe5] p-3.5" data-testid={`row-visit-${visit.id}`}><span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-800"><Clock3 size={15} /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap justify-between gap-x-2 gap-y-1"><p className="text-xs font-bold text-emerald-950" data-testid={`text-visit-date-${visit.id}`}>{dateLabel(visit.arrivedAt,{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</p><p className="text-xs font-semibold text-emerald-950">{currency(visit.billAmount)}</p></div><p className="mt-1 text-[10px] text-stone-600">{visit.partySize} khách{visit.note ? ` · ${visit.note}` : ''}</p></div>{index===0 && <span className="absolute -right-1 -top-1 rounded-full bg-[#e1ebdf] px-2 py-0.5 text-[8px] font-bold uppercase tracking-[.1em] text-emerald-800">Gần nhất</span>}</article>)}</div> : <EmptyList title="Lượt ghé đầu tiên có thể bắt đầu hôm nay" detail="Chưa có lịch sử lượt ghé. Hãy ghi nhận khi khách đến quán." />}
+          {visitQuery.isLoading ? <div className="space-y-3" data-testid="loading-visits"><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : visitQuery.isError ? <ErrorNotice message={apiErrorMessage(visitQuery.error, 'Chưa tải được lịch sử lượt ghé.')} onRetry={() => visitQuery.refetch()} /> : visitQuery.data?.length ? <div className="space-y-2">{[...visitQuery.data].sort((a,b)=>new Date(b.arrivedAt).getTime()-new Date(a.arrivedAt).getTime()).map((visit,index) => <article key={visit.id} className="relative flex gap-3 rounded-xl bg-[#f3efe5] p-3.5" data-testid={`row-visit-${visit.id}`}><span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-800"><Clock3 size={15} /></span><div className="min-w-0 flex-1"><div className="flex flex-wrap justify-between gap-x-2 gap-y-1"><p className="text-xs font-bold text-emerald-950" data-testid={`text-visit-date-${visit.id}`}>{dateLabel(visit.arrivedAt,{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</p><p className="text-xs font-semibold text-emerald-950">{currency(visit.billAmount)}</p></div><p className="mt-1 text-[10px] text-stone-600">{visit.partySize} khách{visit.note ? ` · ${visit.note}` : ''}</p></div>{index===0 && <span className="absolute -right-1 -top-1 rounded-full bg-[#e1ebdf] px-2 py-0.5 text-[8px] font-bold uppercase tracking-[.1em] text-emerald-800">Gần nhất</span>}</article>)}</div> : <EmptyList title="Lượt ghé đầu tiên có thể bắt đầu hôm nay" detail="Chưa có lịch sử lượt ghé. Hãy ghi nhận khi khách đến quán." />}
           <p className="mt-4 text-[10px] leading-4 text-stone-500">Quyền lợi theo hạng thành viên vẫn là đề xuất, chờ chủ quán duyệt.</p>
         </div>
       </section>
