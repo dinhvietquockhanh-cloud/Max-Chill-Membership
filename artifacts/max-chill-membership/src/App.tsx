@@ -513,7 +513,11 @@ function MembersPage() {
       <PageTitle eyebrow="Danh sách thành viên" title="Rất vui được gặp lại." subtitle="Tìm khách quen, xem hạng thành viên hoặc chào đón người mới." action={<ButtonLink href="/members/new" testId="link-new-member"><Plus size={16} /> Đăng ký thành viên</ButtonLink>} />
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <label className="relative block w-full sm:max-w-[420px]"><Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-500" /><input type="search" placeholder="Tìm theo tên hoặc số điện thoại" value={search} onChange={e => setSearch(e.target.value)} className="form-control h-12 pl-11" data-testid="input-member-search" /></label>
-        {!members.isLoading && !members.isError && <p className="text-xs text-stone-500" data-testid="text-member-results">Tìm thấy {members.data?.length ?? 0} thành viên</p>}
+        {!members.isLoading && !members.isError && (
+          <p className="text-xs text-stone-500" data-testid="text-member-results">
+            Tìm thấy {members.data?.length ?? 0} thành viên
+          </p>
+        )}
       </div>
       {deleteSuccess && <p className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status" data-testid="status-member-deleted">{deleteSuccess}</p>}
       {members.isLoading ? <div className="space-y-3" data-testid="loading-members">{[1,2,3,4].map(n => <Skeleton key={n} className="h-[76px]" />)}</div> : members.isError ? <ErrorNotice message={apiErrorMessage(members.error, 'Chưa tải được danh sách thành viên.')} onRetry={() => members.refetch()} /> : members.data?.length ? (
