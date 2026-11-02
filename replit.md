@@ -10,6 +10,7 @@ A staff-facing membership register for Max Chill Garden: find guests by phone, m
 - The optional Canvas workflow is not needed to run the staff app.
 - `pnpm run typecheck` — full typecheck across all packages
 - Build through the artifact configuration so `PORT` and `BASE_PATH` are supplied to Vite.
+- Before deploying the membership app to the VPS, run `pnpm run predeploy`; stop the release if it exits unsuccessfully. It builds the production frontend with defaults `PORT=5000` and `BASE_PATH=/`. The Pages workflow uses the same check and does not deploy unless it passes.
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — initialize or update the development database schema; review any destructive change prompts before proceeding.
 - Required env: `DATABASE_URL` — provided by the Replit development PostgreSQL database; do not put credentials in source files.
