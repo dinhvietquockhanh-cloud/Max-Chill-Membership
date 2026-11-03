@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { PwaInstallControl } from '@/components/pwa-install-control';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
@@ -176,15 +175,15 @@ function dateLabel(value?: string | null, options: Intl.DateTimeFormatOptions = 
 }
 function birthdayInputValue(value?: string | null) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value?.slice(0, 10) ?? '');
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : '';
+  return match ? match[0] : '';
 }
 function birthdayStorageValue(value: string) {
-  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
   if (!match) return null;
-  const [, dayText, monthText, yearText] = match;
-  const day = Number(dayText);
-  const month = Number(monthText);
+  const [, yearText, monthText, dayText] = match;
   const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
   const checkDate = new Date(0);
   checkDate.setFullYear(year, month - 1, day);
   checkDate.setHours(0, 0, 0, 0);
@@ -275,7 +274,6 @@ function AppShell({ children }: { children: ReactNode }) {
             <p className="mt-1 text-[11px] leading-5 text-amber-50/50">Chào đón khách quay lại khu vườn, qua từng lần ghé thăm.</p>
           </div>
           <div className="mt-4 px-1"><ServicePulse /></div>
-          <div className="mt-4"><PwaInstallControl /></div>
         </div>
       </aside>
       <div className="lg:pl-[258px]">
@@ -286,7 +284,6 @@ function AppShell({ children }: { children: ReactNode }) {
               <span><span className="block font-editorial text-lg leading-none text-emerald-950">Max Chill</span><span className="mt-1 block text-[9px] uppercase tracking-[.16em] text-stone-500">Thành viên khu vườn</span></span>
             </Link>
             <div className="flex items-center gap-2">
-              <PwaInstallControl compact />
               <button aria-label="Mở hoặc đóng điều hướng" onClick={() => setMobileOpen(!mobileOpen)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-300 text-emerald-950" data-testid="button-mobile-menu">{mobileOpen ? <X size={19} /> : <Menu size={19} />}</button>
             </div>
           </div>
@@ -642,14 +639,14 @@ function MemberForm({ initial, onSave, onCancel, saving, submitLabel }: { initia
     if (!fullName.trim()) { setIssue('Vui lòng nhập họ và tên.'); return; }
     if (phone.replace(/\D/g, '').length < 8) { setIssue('Vui lòng nhập số điện thoại có ít nhất 8 chữ số.'); return; }
     const birthdayValue = birthday.trim() ? birthdayStorageValue(birthday) : null;
-    if (birthday.trim() && !birthdayValue) { setIssue('Ngày sinh không hợp lệ. Hãy nhập theo định dạng ngày/tháng/năm.'); return; }
+     if (birthday.trim() && !birthdayValue) { setIssue('Ngày sinh không hợp lệ. Hãy chọn một ngày hợp lệ.'); return; }
     setIssue('');
     onSave({ fullName: fullName.trim(), phone: phone.trim(), birthday: birthdayValue, notes: notes.trim() || null });
   };
   return <form noValidate onSubmit={submit} className="space-y-5" data-testid="form-member">
     <label className="block text-xs font-semibold text-emerald-950">Họ và tên <span className="text-[#b75e3c]">*</span><input required maxLength={120} value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Tên khách thường dùng" className="form-control mt-2" data-testid="input-member-name" /></label>
     <label className="block text-xs font-semibold text-emerald-950">Số điện thoại <span className="text-[#b75e3c]">*</span><input required type="tel" minLength={8} maxLength={20} value={phone} onChange={e => setPhone(e.target.value)} placeholder="+84 90 123 4567" className="form-control mt-2" data-testid="input-member-phone" /><span className="mt-1.5 block font-normal text-stone-500">Dùng để nhận ra khách khi quay lại.</span></label>
-    <label className="block text-xs font-semibold text-emerald-950">Ngày sinh <span className="font-normal text-stone-500">(không bắt buộc)</span><input type="text" inputMode="numeric" maxLength={10} value={birthday} onChange={e => setBirthday(e.target.value)} placeholder="dd/mm/yyyy" className="form-control mt-2" data-testid="input-member-birthday" /><span className="mt-1.5 block font-normal text-stone-500">Nhập theo thứ tự ngày/tháng/năm, ví dụ 25/12/1995.</span></label>
+    <label className="block text-xs font-semibold text-emerald-950">Ngày sinh <span className="font-normal text-stone-500">(không bắt buộc)</span><input type="date" autoComplete="bday" value={birthday} onChange={e => setBirthday(e.target.value)} className="form-control mt-2" data-testid="input-member-birthday" /><span className="mt-1.5 block font-normal text-stone-500">Chạm vào ô để chọn ngày trên lịch; không cần tự gõ dấu /.</span></label>
     <label className="block text-xs font-semibold text-emerald-950">Ghi chú <span className="font-normal text-stone-500">(không bắt buộc)</span><textarea maxLength={2000} rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Sở thích hoặc điều cần nhớ" className="form-control mt-2 resize-y py-3" data-testid="input-member-notes" /></label>
     {issue && <p className="text-xs font-medium text-rose-800" role="alert" data-testid="status-form-error">{issue}</p>}
     <div className="flex flex-col-reverse gap-2 border-t border-stone-200 pt-5 sm:flex-row sm:justify-end">{onCancel && <button type="button" onClick={onCancel} className="min-h-11 rounded-xl border border-stone-300 px-5 text-sm font-semibold text-stone-700 hover:bg-stone-100" data-testid="button-cancel-member">Hủy</button>}<button disabled={saving} type="submit" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-900 px-5 text-sm font-semibold text-amber-50 hover:bg-emerald-800 disabled:opacity-60" data-testid="button-submit-member">{saving ? <LoaderCircle size={16} className="animate-spin" /> : <Check size={16} />}{submitLabel}</button></div>

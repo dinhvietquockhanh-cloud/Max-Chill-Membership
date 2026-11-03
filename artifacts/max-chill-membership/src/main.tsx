@@ -7,12 +7,12 @@ import './index.css';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    const appScope = new URL(import.meta.env.BASE_URL, window.location.origin).href;
     navigator.serviceWorker
-      .register(`${import.meta.env.BASE_URL}service-worker.js`, {
-        scope: import.meta.env.BASE_URL,
-      })
+      .getRegistration(appScope)
+      .then(registration => registration?.scope === appScope ? registration.unregister() : undefined)
       .catch((error: unknown) => {
-        console.error('Không thể đăng ký service worker:', error);
+        console.error('Không thể gỡ service worker cũ:', error);
       });
   });
 }
