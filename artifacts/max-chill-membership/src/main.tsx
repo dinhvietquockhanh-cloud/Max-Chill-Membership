@@ -10,7 +10,9 @@ if ('serviceWorker' in navigator) {
     const appScope = new URL(import.meta.env.BASE_URL, window.location.origin).href;
     navigator.serviceWorker
       .getRegistration(appScope)
-      .then(registration => registration?.scope === appScope ? registration.unregister() : undefined)
+      .then(registration => {
+        if (registration?.scope === appScope) return registration.unregister();
+      })
       .catch((error: unknown) => {
         console.error('Không thể gỡ service worker cũ:', error);
       });
