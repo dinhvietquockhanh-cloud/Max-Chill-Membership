@@ -41,7 +41,7 @@ jobs:
         env:
           PORT: 5000
           BASE_PATH: /Max-Chill-Membership/
-        run: pnpm --filter max-chill-membership run build
+        run: pnpm run predeploy
 
       - name: Create .nojekyll
         run: touch artifacts/max-chill-membership/dist/.nojekyll
