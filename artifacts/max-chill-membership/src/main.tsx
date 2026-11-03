@@ -12,6 +12,7 @@ if ('serviceWorker' in navigator) {
       .getRegistration(appScope)
       .then(registration => {
         if (registration?.scope === appScope) return registration.unregister();
+        return undefined;
       })
       .catch((error: unknown) => {
         console.error('Không thể gỡ service worker cũ:', error);

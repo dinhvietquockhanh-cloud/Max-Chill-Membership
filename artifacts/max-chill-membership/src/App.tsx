@@ -679,15 +679,24 @@ function NewMemberPage() {
   </div>;
 }
 
-function MemberProfilePage() {
+function EditMemberPage() {
+  return <MemberProfilePage initialEditing />;
+}
+
+function MemberProfileRoute() {
+  return <MemberProfilePage />;
+}
+
+function MemberProfilePage({ initialEditing = false }: { initialEditing?: boolean }) {
   const params = useParams<{ memberId: string }>();
+  const [, setLocation] = useLocation();
   const memberId = Number(params.memberId);
   const validId = Number.isFinite(memberId) && memberId > 0;
   const memberQuery = useGetMember(validId ? memberId : 0, { query: { enabled: validId, queryKey: getGetMemberQueryKey(validId ? memberId : 0) } });
   const visitQuery = useListMemberVisits(validId ? memberId : 0, { query: { enabled: validId, queryKey: getListMemberVisitsQueryKey(validId ? memberId : 0), select: visitListResponse } });
   const update = useUpdateMember();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
   const [showVisitForm, setShowVisitForm] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -705,15 +714,15 @@ function MemberProfilePage() {
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
           <span className="flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-[24px] bg-[#d8a76a] font-editorial text-[26px] text-emerald-950" data-testid={`avatar-profile-${member.id}`}>{initials(member.fullName)}</span>
            <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-3"><h1 className="font-editorial text-[2rem] leading-tight tracking-[-.025em] sm:text-[2.5rem]" data-testid="text-profile-name">{member.fullName}</h1><span className={`tier-pill ${tierClass(member.tier)}`} data-testid="status-profile-tier">{tierLabel(member.tier)}</span></div><p className="mt-2 font-mono-label text-xs text-amber-50/60" data-testid="text-profile-phone">{member.phone}</p><p className="mt-1 text-xs text-amber-50/50">Thành viên từ {dateLabel(member.joinedAt)}</p></div>
-           <button onClick={() => { setEditing(!editing); setShowVisitForm(false); }} className="inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-xl border border-amber-50/20 px-4 text-xs font-semibold text-amber-50 hover:bg-amber-50/10 sm:self-center" data-testid="button-edit-member">{editing ? <X size={15} /> : <span className="text-base leading-none">+</span>}{editing ? 'Đóng chỉnh sửa' : 'Sửa hồ sơ'}</button>
+            <button onClick={() => { const nextEditing = !editing; setEditing(nextEditing); setShowVisitForm(false); setLocation(nextEditing ? `/members/${memberId}/edit` : `/members/${memberId}`); }} className="inline-flex min-h-10 items-center justify-center gap-2 self-start rounded-xl border border-amber-50/20 px-4 text-xs font-semibold text-amber-50 hover:bg-amber-50/10 sm:self-center" data-testid="button-edit-member">{editing ? <X size={15} /> : <span className="text-base leading-none">+</span>}{editing ? 'Đóng chỉnh sửa' : 'Sửa hồ sơ'}</button>
         </div>
         <div className="relative mt-7 grid grid-cols-2 gap-2 border-t border-amber-50/10 pt-5 sm:grid-cols-4">
           {[['Lượt ghé', String(member.visitCount)], ['Tổng chi tiêu', currency(member.totalSpend)], ['Số khách trung bình', member.averagePartySize ? `${member.averagePartySize.toFixed(1)} khách` : '—'], ['Lần ghé gần nhất', member.lastVisitAt ? dateLabel(member.lastVisitAt,{day:'numeric',month:'short'}) : 'Chưa có']].map(([label, value]) => <div key={label} className="rounded-xl bg-amber-50/[.055] px-3 py-2.5"><p className="font-mono-label text-[8px] uppercase tracking-[.15em] text-amber-50/45">{label}</p><p className="mt-1 text-sm font-semibold text-amber-50" data-testid={`text-profile-${label.toLowerCase().replaceAll(' ','-')}`}>{value}</p></div>)}
         </div>
       </div>
-      {editing && <div className="border-b border-stone-200 bg-[#f4f0e6] p-5 sm:p-7"><div className="mb-5"><p className="font-mono-label text-[9px] uppercase tracking-[.18em] text-emerald-800/65">Thông tin thành viên</p><h2 className="font-editorial mt-1 text-2xl text-emerald-950">Cập nhật thông tin khách.</h2></div><MemberForm initial={member} saving={update.isPending} submitLabel="Lưu thay đổi" onCancel={() => setEditing(false)} onSave={data => {
+      {editing && <div className="border-b border-stone-200 bg-[#f4f0e6] p-5 sm:p-7"><div className="mb-5"><p className="font-mono-label text-[9px] uppercase tracking-[.18em] text-emerald-800/65">Thông tin thành viên</p><h2 className="font-editorial mt-1 text-2xl text-emerald-950">Cập nhật thông tin khách.</h2></div><MemberForm initial={member} saving={update.isPending} submitLabel="Lưu thay đổi" onCancel={() => { setEditing(false); if (initialEditing) setLocation(`/members/${memberId}`); }} onSave={data => {
         setError('');
-        update.mutate({ memberId, data }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetMemberQueryKey(memberId) }); queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() }); setEditing(false); setSuccess('Đã lưu thông tin thành viên.'); window.setTimeout(() => setSuccess(''), 3500); }, onError: () => setError('Chưa lưu được thay đổi. Vui lòng thử lại.') });
+        update.mutate({ memberId, data }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetMemberQueryKey(memberId) }); queryClient.invalidateQueries({ queryKey: getListMembersQueryKey() }); setEditing(false); setLocation(`/members/${memberId}`); setSuccess('Đã lưu thông tin thành viên.'); window.setTimeout(() => setSuccess(''), 3500); }, onError: () => setError('Chưa lưu được thay đổi. Vui lòng thử lại.') });
       }} /></div>}
     </section>
     <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,.85fr)]">
@@ -760,7 +769,8 @@ function Router() {
     <Route path="/dashboard" component={DashboardPage} />
     <Route path="/members" component={MembersPage} />
     <Route path="/members/new" component={NewMemberPage} />
-    <Route path="/members/:memberId" component={MemberProfilePage} />
+    <Route path="/members/:memberId/edit" component={EditMemberPage} />
+    <Route path="/members/:memberId" component={MemberProfileRoute} />
     <Route path="/tiers" component={TiersPage} />
     <Route component={NotFound} />
   </Switch></RoutedErrorBoundary></AppShell>;
